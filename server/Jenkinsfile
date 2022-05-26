@@ -1,0 +1,17 @@
+pipeline {
+    agent any
+    environment {
+        BRANCH_NAME = "${env.GIT_BRANCH.split("/")[1]}"
+        branch = "*/${BRANCH_NAME}"
+    }
+    stages {
+        stage ("build") {
+            steps {
+                //echo env.GIT_BRANCH.split("/")[1]    
+                sh 'echo "$BRANCH_NAME"'    
+                sh 'echo "beckend deploy"'
+                sh 'echo "new file"'
+            }
+        }
+    }
+}
