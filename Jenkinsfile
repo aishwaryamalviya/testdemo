@@ -13,6 +13,19 @@ pipeline {
         BRANCH_NAME= "${env.BRANCH_NAME}"
     }
     stages {
+        stage('get agent') {
+            steps {
+                script {
+                    if (env.BRANCH_NAME == 'prod') {
+                        server = 'prod'
+                    }
+                    else if(env.BRANCH_NAME == 'validate') {
+                        server = 'validate'
+                    }
+                    else {server = 'dev'}
+                }
+            }
+        }
         stage('Compile and Clean') { 
             steps {
                 sh "echo $BRANCH_NAME"
@@ -31,17 +44,17 @@ pipeline {
                  }
            }
         }       
-        stage ('Build Docker image') {
+         stage ('Build Docker image') {
             steps {                
                 script {
-                    dockerImage = docker.build("$registryName:$BUILD_NUMBER","--build-arg BRANCH_NAME=$env.BRANCH_NAME .")
+                    dockerImage = docker.build("$registryName/$BRANCH_NAME:$BUILD_NUMBER","--build-arg BRANCH_NAME=$env.BRANCH_NAME .")
                 }
             }
-        } 
+        }
         stage('Upload Image to ACR') {
             steps{   
                 script {
-                    if (env.BRANCH_NAME == 'Feature') {
+                    if (env.BRANCH_NAME == 'feature') {
                         echo "image will not push into ACR"
                     } else {
                         docker.withRegistry( "http://${registryUrl}", registryCredential ) {
@@ -51,5 +64,22 @@ pipeline {
                }
            }
        }
+       stage ('deploy') {
+            agent {
+               label "$server"
+            }
+            steps {                
+                script {
+                    if (env.BRANCH_NAME == 'feature') {
+                        echo "image will not pull from ACR"
+                    } else {
+                    docker.withRegistry( "http://${registryUrl}", registryCredential ) {
+                        image = docker.image("$registryName/$BRANCH_NAME:$BUILD_NUMBER")
+                        image.pull()
+                        }
+                    }
+                }
+            }
+        } 
     }
 }
